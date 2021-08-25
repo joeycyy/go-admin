@@ -29,37 +29,43 @@ func (c *ConsoleLogger) DEBUG(format string, args ...interface{}) {
 	if c.level > LogLevelDebug {
 		return
 	}
-	writeLog(os.Stdout, LogLevelDebug, format, args...)
+	logData := writeLog(LogLevelDebug, format, args...)
+	fmt.Fprintf(os.Stdout, "[%s] %s (%s:%s:%d) %s\n", logData.TimeStr, logData.LevelStr, logData.FileName, logData.FuncName, logData.LineNo, logData.Message)
 }
 func (c *ConsoleLogger) TRACE(format string, args ...interface{}) {
 	if c.level > LogLevelTrace {
 		return
 	}
-	writeLog(os.Stdout, LogLevelDebug, format, args...)
+	logData := writeLog(LogLevelTrace, format, args...)
+	fmt.Fprintf(os.Stdout, "[%s] %s (%s:%s:%d) %s\n", logData.TimeStr, logData.LevelStr, logData.FileName, logData.FuncName, logData.LineNo, logData.Message)
 }
 func (c *ConsoleLogger) INFO(format string, args ...interface{}) {
 	if c.level > LogLevelInfo {
 		return
 	}
-	writeLog(os.Stdout, LogLevelInfo, format, args...)
+	logData := writeLog(LogLevelInfo, format, args...)
+	fmt.Fprintf(os.Stdout, "[%s] %s (%s:%s:%d) %s\n", logData.TimeStr, logData.LevelStr, logData.FileName, logData.FuncName, logData.LineNo, logData.Message)
 }
 func (c *ConsoleLogger) WARN(format string, args ...interface{}) {
 	if c.level > LogLevelWarn {
 		return
 	}
-	writeLog(os.Stdout, LogLevelDebug, format, args...)
+	logData := writeLog(LogLevelWarn, format, args...)
+	fmt.Fprintf(os.Stdout, "[%s] %s (%s:%s:%d) %s\n", logData.TimeStr, logData.LevelStr, logData.FileName, logData.FuncName, logData.LineNo, logData.Message)
 }
 func (c *ConsoleLogger) ERROR(format string, args ...interface{}) {
 	if c.level > LogLevelError {
 		return
 	}
-	writeLog(os.Stdout, LogLevelDebug, format, args...)
+	logData := writeLog(LogLevelError, format, args...)
+	fmt.Fprintf(os.Stdout, "[%s] %s (%s:%s:%d) %s\n", logData.TimeStr, logData.LevelStr, logData.FileName, logData.FuncName, logData.LineNo, logData.Message)
 }
 func (c *ConsoleLogger) FATAL(format string, args ...interface{}) {
 	if c.level > LogLevelFatal {
 		return
 	}
-	writeLog(os.Stdout, LogLevelFatal, format, args...)
+	logData := writeLog(LogLevelFatal, format, args...)
+	fmt.Fprintf(os.Stdout, "[%s] %s (%s:%s:%d) %s\n", logData.TimeStr, logData.LevelStr, logData.FileName, logData.FuncName, logData.LineNo, logData.Message)
 }
 
 func (c *ConsoleLogger) Close() {

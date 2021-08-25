@@ -28,7 +28,7 @@ func Run() {
 }
 
 func main() {
-	initLogger("console", "c:/log/", "user_server", "debug") // 后续放到配置文件中
+	initLogger("file", "c:/log/", "user_server", "debug") // 后续放到配置文件中
 	Run()
 	return
 	//TODO 引入路由，启动http服务

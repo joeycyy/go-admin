@@ -3,14 +3,16 @@ package logger
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 type FileLogger struct {
-	level    int
-	logPath  string
-	logName  string
-	file     *os.File
-	warnFile *os.File
+	level       int
+	logPath     string
+	logName     string
+	file        *os.File
+	warnFile    *os.File
+	LogDataChan chan *LogData
 }
 
 func NewFileLogger(config map[string]string) (log LogInterface, err error) {
@@ -29,11 +31,20 @@ func NewFileLogger(config map[string]string) (log LogInterface, err error) {
 		err = fmt.Errorf("not found log_level")
 		return
 	}
+	logChanSize, ok := config["log_chan_size"]
+	if !ok {
+		logChanSize = "50000"
+	}
+	chanSize, err := strconv.Atoi(logChanSize)
+	if err != nil {
+		chanSize = 50000
+	}
 	level := getLogLevel(logLevel)
 	log = &FileLogger{
-		level:   level,
-		logPath: logPath,
-		logName: logName,
+		level:       level,
+		logPath:     logPath,
+		logName:     logName,
+		LogDataChan: make(chan *LogData, chanSize),
 	}
 	log.Init()
 	return
@@ -54,43 +65,83 @@ func (f *FileLogger) Init() {
 	}
 
 	f.warnFile = file
+	go f.writeLogBackground()
 }
 
+func (f *FileLogger) writeLogBackground() {
+	// 队列为空时，会阻塞线程，但对主线程没有影响
+	for logData := range f.LogDataChan {
+		var file *os.File = f.file
+		if logData.WarnAndFatal {
+			file = f.warnFile
+		}
+		fmt.Fprintf(file, "[%s] %s (%s:%s:%d) %s\n", logData.TimeStr, logData.LevelStr, logData.FileName, logData.FuncName, logData.LineNo, logData.Message)
+	}
+}
 func (f *FileLogger) DEBUG(format string, args ...interface{}) {
 	if f.level > LogLevelDebug {
 		return
 	}
-	writeLog(f.file, LogLevelDebug, format, args...)
+	logData := writeLog(LogLevelDebug, format, args...)
+	// 判断队列是否满
+	select {
+	case f.LogDataChan <- logData:
+	default:
+	}
 }
 func (f *FileLogger) TRACE(format string, args ...interface{}) {
 	if f.level > LogLevelTrace {
 		return
 	}
-	writeLog(f.file, LogLevelTrace, format, args...)
+	logData := writeLog(LogLevelTrace, format, args...)
+	// 判断队列是否满
+	select {
+	case f.LogDataChan <- logData:
+	default:
+	}
 }
 func (f *FileLogger) INFO(format string, args ...interface{}) {
 	if f.level > LogLevelInfo {
 		return
 	}
-	writeLog(f.warnFile, LogLevelDebug, format, args...)
+	logData := writeLog(LogLevelInfo, format, args...)
+	// 判断队列是否满
+	select {
+	case f.LogDataChan <- logData:
+	default:
+	}
 }
 func (f *FileLogger) WARN(format string, args ...interface{}) {
 	if f.level > LogLevelWarn {
 		return
 	}
-	writeLog(f.warnFile, LogLevelWarn, format, args...)
+	logData := writeLog(LogLevelWarn, format, args...)
+	// 判断队列是否满
+	select {
+	case f.LogDataChan <- logData:
+	default:
+	}
 }
 func (f *FileLogger) ERROR(format string, args ...interface{}) {
 	if f.level > LogLevelError {
 		return
 	}
-	writeLog(f.warnFile, LogLevelError, format, args...)
+	logData := writeLog(LogLevelError, format, args...)
+	// 判断队列是否满
+	select {
+	case f.LogDataChan <- logData:
+	default:
+	}
 }
 func (f *FileLogger) FATAL(format string, args ...interface{}) {
 	if f.level > LogLevelFatal {
 		return
 	}
-	writeLog(f.warnFile, LogLevelFatal, format, args...)
+	logData := writeLog(LogLevelFatal, format, args...)
+	select {
+	case f.LogDataChan <- logData:
+	default:
+	}
 }
 
 func (f *FileLogger) Close() {
