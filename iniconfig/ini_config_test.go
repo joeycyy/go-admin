@@ -1,7 +1,7 @@
 package iniconfig
 
 import (
-	"io/ioutil"
+	"fmt"
 	"testing"
 )
 
@@ -23,15 +23,11 @@ type ServerConfig struct {
 }
 
 func TestIniConfig(t *testing.T) {
-	data, err := ioutil.ReadFile("./config.ini")
-	if err != nil {
-		t.Errorf("read file failed, err:%s", err)
-	}
 	var conf = &Config{}
-	err = UnMarshal(data, conf)
+	err := UnMarshalFile("./config.ini", conf)
 	if err != nil {
 		t.Errorf("UnMarshal failed, err:%s", err)
 		return
 	}
-	// fmt.Println(*conf)
+	fmt.Printf("conf:%#v", *conf)
 }

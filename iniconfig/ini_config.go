@@ -2,9 +2,20 @@ package iniconfig
 
 import (
 	"fmt"
+	"io/ioutil"
 	"reflect"
+	"strconv"
 	"strings"
 )
+
+func UnMarshalFile(filename string, result interface{}) (err error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return
+	}
+
+	return UnMarshal(data, result)
+}
 
 // data 字节数组，可以是读取文件时获取的字节数组
 // result 空接口，反射对象的种类要为指针
@@ -53,10 +64,13 @@ func UnMarshal(data []byte, result interface{}) (err error) {
 			continue
 		}
 		// 如果是节点字段行
-		// err = parseItemName(line, lastSectionName, result)
+		err = parseItemName(line, lastSectionName, result)
+		if err != nil {
+			err = fmt.Errorf("%v, lineno:%d", err, index+1)
+			return
+		}
 
 	}
-	_ = lastSectionName
 	return
 }
 
@@ -81,14 +95,71 @@ func parseItemName(line string, sectionName string, result interface{}) (err err
 		return
 	}
 
-	// 获取节点的类型对象
-	valueObj := reflect.ValueOf(result)
-	sectionValue := valueObj.Elem().FieldByName(sectionName)
+	// 获取result的类型对象
+	resultValueObj := reflect.ValueOf(result)
+	// 获取节点的value对象
+	sectionValue := resultValueObj.Elem().FieldByName(sectionName)
+	// 获取节点对应的类型对象
 	sectionType := sectionValue.Type()
 
+	// fmt.Println(sectionType)
+	// 判断是否结构体类型
 	if sectionType.Kind() != reflect.Struct {
 		err = fmt.Errorf("%s must be struct", sectionName)
 		return
+	}
+
+	keyFieldName := ""
+	// 遍历MysqlConfig所拥有的字段，判断其tag是否和当前文本行相等,相等则获取其变量名
+	for i := 0; i < sectionType.NumField(); i++ {
+		field := sectionType.Field(i)
+		tagVal := field.Tag.Get("ini")
+		if key == tagVal {
+			keyFieldName = field.Name
+			break
+		}
+	}
+
+	// 判断keyFieldName是否存在
+	if len(keyFieldName) == 0 {
+		return
+	}
+	// 获取具体字段的反射对象
+	fieldValue := sectionValue.FieldByName(keyFieldName)
+	// fmt.Println(fieldValue)
+	if fieldValue == reflect.ValueOf(nil) {
+		err = fmt.Errorf("syntax error,line:%s", line)
+		return
+	}
+
+	// 根据字段类型，设置值
+	switch fieldValue.Type().Kind() {
+	case reflect.String:
+		fieldValue.SetString(value)
+	case reflect.Int8, reflect.Int16, reflect.Int, reflect.Int32, reflect.Int64:
+		intVal, errRet := strconv.ParseInt(value, 10, 64)
+		if errRet != nil {
+			err = errRet
+			return
+		}
+		fieldValue.SetInt(intVal)
+	case reflect.Uint8, reflect.Uint16, reflect.Uint, reflect.Uint32, reflect.Uint64:
+		intVal, errRet := strconv.ParseUint(value, 10, 64)
+		if errRet != nil {
+			err = errRet
+			return
+		}
+		fieldValue.SetUint(intVal)
+	case reflect.Float32, reflect.Float64:
+		floatVal, errRet := strconv.ParseFloat(value, 64)
+		if errRet != nil {
+			return
+		}
+
+		fieldValue.SetFloat(floatVal)
+
+	default:
+		err = fmt.Errorf("unsupport type:%v", fieldValue.Type().Kind())
 	}
 
 	return
