@@ -1,7 +1,6 @@
 package iniconfig
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -29,5 +28,5 @@ func TestIniConfig(t *testing.T) {
 		t.Errorf("UnMarshal failed, err:%s", err)
 		return
 	}
-	fmt.Printf("conf:%#v", *conf)
+	t.Logf("unmarshal succ, conf:%#v", *conf)
 }
